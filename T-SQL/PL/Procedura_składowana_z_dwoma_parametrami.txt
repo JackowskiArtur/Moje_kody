@@ -1,0 +1,36 @@
+-- Stworzenie procedury składowanej 
+create procedure sales.sp_Currency_Date_Average_Rate_more_or_equal_from_USD
+--deklaracja parametrów
+ @CurrencyRateDate date,
+ @Avg_rate int
+ as 
+ BEGIN
+ --zrzucenie tabeli tymczasowej jeśli już istnieje 
+ IF OBJECT_ID('tempdb.dbo.##temp_curr_avg_rate','U') is not null 
+	 drop table ##temp_curr_avg_rate
+--deklaracja tabeli	 
+ create table ##temp_curr_avg_rate(
+	CurrencyRateDate date
+	,FromCurrencyCode char(3)
+	,ToCurrencyCode char(3)
+	,CurrencyName varchar(40)
+	,AverageRate money)
+--zapełnienie tabeli danymi
+ insert into ##temp_curr_avg_rate
+select 
+	cr.CurrencyRateDate
+	,cr.FromCurrencyCode
+	,cr.ToCurrencyCode
+	,c.Name
+	,cr.AverageRate
+
+ from sales.CurrencyRate cr
+ left join sales.Currency  c on c.CurrencyCode=cr.ToCurrencyCode
+ -- definicja parametrów w taki sposób, aby wynikami były waluty, których w danym dniu możemy otrzymać równą wartość bądź większą niż wskazana za 1$
+ where 
+ cr.CurrencyRateDate=@CurrencyRateDate
+ and cr.AverageRate >= @Avg_rate
+
+ END
+-- przykładowe wykonanie procedury na dzień 2011-06-11 z średnią wartością większą bądź równą 2
+exec sales.sp_Currency_Date_Average_Rate_more_or_equal_from_USD @CurrencyRateDate='2011-06-01', @Avg_rate = 2

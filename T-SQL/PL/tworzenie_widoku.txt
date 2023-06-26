@@ -1,0 +1,34 @@
+--tworzenie widoku z danymi pracownika z konkretnymi długościami pól i wykorzystaniem funkcji oraz warunków do pogrupowania
+--pracowników do stref według kodu pocztowego i odfiltrowanie części pracowników po długości imienia
+
+create view Pracownicy as
+
+select 
+--Nadanie numeru ID według numeru wiersza, gdy pracownicy posegregowani są po kodzie pocztowym
+	ROW_NUMBER() over(order by ad.PostalCode) as ID_Pracownika
+	,cast(p.FirstName as varchar(20)) as Imię
+--Weryfikacja czy nie ma wartości NULL i ewentualne uzupełnienie pustą wartością
+	,cast(ISNULL(p.MiddleName,'') as varchar(20)) as 'Drugie imię'
+	,cast(p.LastName as varchar(50)) as Nazwisko
+	,cast(em.EmailAddress as nvarchar(70)) as 'Adres e-mail'
+	,cast(ad.PostalCode as nvarchar(6)) as 'Kod pocztowy'
+	,cast(ad.city as varchar(70)) as Miasto
+	,cast(ad.AddressLine1 as nvarchar(100)) as Adres
+--warunek dzielący pracowników na regiony po kodzie pocztowym
+	,cast(
+		CASE
+		WHEN LEFT(ad.PostalCode,1) in ('9','8','7') THEN 1
+		WHEN LEFT(ad.PostalCode,1) in ('6','5') THEN 2
+		WHEN LEFT(ad.PostalCode,1) in ('4','3','2','1','0') THEN 3
+		WHEN LEFT(ad.PostalCode,1) like '[A-L]' THEN 4
+		WHEN LEFT(ad.PostalCode,1) like '[M-Z]' THEN 5
+		END
+	as int) as 'Kod regionu' 
+from 
+person.Person p
+left join Person.EmailAddress em on p.BusinessEntityID = em.BusinessEntityID
+left join Person.BusinessEntityAddress be on  be.BusinessEntityID=em.BusinessEntityID
+left join Person.Address ad on be.AddressID=ad.AddressID
+where 
+ad.AddressID is not null
+and len(p.firstname)>5
